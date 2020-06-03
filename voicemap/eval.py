@@ -9,8 +9,8 @@ import pandas as pd
 from olympic.callbacks import Callback
 from tqdm import tqdm
 
-from voicemap.datasets import PairDataset, collate_pairs
-
+from voicemap.datasets import PairDataset
+from voicemap.datasets.core import collate_pairs
 
 def seg_intersect(a1,a2, b1,b2):
     def perp(a) :
