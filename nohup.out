@@ -1,0 +1,31 @@
+/home/profenpoche/.local/lib/python3.7/site-packages/sklearn/externals/joblib/externals/cloudpickle/cloudpickle.py:47: DeprecationWarning: the imp module is deprecated in favour of importlib; see the module's documentation for alternative uses
+  import imp
+/home/profenpoche/.local/lib/python3.7/site-packages/numba/errors.py:105: UserWarning: Insufficiently recent colorama version found. Numba requires colorama >= 0.3.9
+  warnings.warn(msg)
+usage: train.py [-h] [--model MODEL] [--dim DIM] [--lr LR]
+                [--weight-decay WEIGHT_DECAY] [--momentum MOMENTUM]
+                [--epochs EPOCHS] [--filters FILTERS]
+                [--batch-size BATCH_SIZE] [--n-seconds N_SECONDS]
+                [--downsampling DOWNSAMPLING] [--spectrogram SPECTROGRAM]
+                [--precompute-spect PRECOMPUTE_SPECT]
+                [--window-length WINDOW_LENGTH] [--window-hop WINDOW_HOP]
+                [--n_t N_T] [--T T] [--n_f N_F] [--F F]
+train.py: error: unrecognized arguments:  # resnet ou baseline
+/home/profenpoche/.local/lib/python3.7/site-packages/sklearn/externals/joblib/externals/cloudpickle/cloudpickle.py:47: DeprecationWarning: the imp module is deprecated in favour of importlib; see the module's documentation for alternative uses
+  import imp
+/home/profenpoche/.local/lib/python3.7/site-packages/numba/errors.py:105: UserWarning: Insufficiently recent colorama version found. Numba requires colorama >= 0.3.9
+  warnings.warn(msg)
+model=resnet__dim=1__lr=None__weight_decay=None__momentum=None__filters=None__batch_size=None__n_seconds=None__spectrogram=True__n_t=0__T=None__n_f=0__F=None
+Traceback (most recent call last):
+  File "/home/profenpoche/voicemap/experiments/train.py", line 63, in <module>
+    in_channels = int(args.window_length * 16000) // 2 + 1
+TypeError: unsupported operand type(s) for *: 'NoneType' and 'int'
+/home/profenpoche/.local/lib/python3.7/site-packages/sklearn/externals/joblib/externals/cloudpickle/cloudpickle.py:47: DeprecationWarning: the imp module is deprecated in favour of importlib; see the module's documentation for alternative uses
+  import imp
+/home/profenpoche/.local/lib/python3.7/site-packages/numba/errors.py:105: UserWarning: Insufficiently recent colorama version found. Numba requires colorama >= 0.3.9
+  warnings.warn(msg)
+model=resnet__dim=1__lr=0.005__weight_decay=0.01__momentum=0.9__filters=32__batch_size=None__n_seconds=None__spectrogram=True__n_t=0__T=None__n_f=0__F=None
+Traceback (most recent call last):
+  File "/home/profenpoche/voicemap/experiments/train.py", line 63, in <module>
+    in_channels = int(args.window_length * 16000) // 2 + 1
+TypeError: unsupported operand type(s) for *: 'NoneType' and 'int'

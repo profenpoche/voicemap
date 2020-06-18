@@ -110,3 +110,9 @@ data/*.csv
 models/*
 logs/*
 plots/*
+bin/*
+data/CommonVoice/*
+data/sitw/*
+local/
+share/
+saved_models/

@@ -32,8 +32,10 @@ class CommonVoice(AudioDataset):
             self.fragment_length = int(seconds * self.base_sampling_rate)
         self.stochastic = stochastic
         self.pad = pad
-
-        self.df = pd.read_csv(self.data_path + f'/CommonVoice/{self.language}/validated.csv')
+        print(self.data_path)
+        print(f'/CommonVoice/{self.language}/validated.csv')
+        self.df = pd.read_csv(self.data_path + f'/CommonVoice/{self.language}/validated.csv', sep="\t")
+        
         self.df['speaker_id'] = self.df['client_id']
         self.df['filepath'] = self.data_path + f'/CommonVoice/{self.language}/clips/' + self.df['path'] + '.mp3'
 
