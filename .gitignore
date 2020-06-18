@@ -116,3 +116,4 @@ data/sitw/*
 local/
 share/
 saved_models/
+data/*.old

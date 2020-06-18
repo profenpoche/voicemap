@@ -28,6 +28,7 @@ torch.backends.cudnn.benchmark = True
 ##############
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', type=str)
+parser.add_argument('--model-path', type=str, help='Saved model to load to continue training')
 parser.add_argument('--dim', type=int)
 parser.add_argument('--lr', type=float, help='Initial learning rate.')
 parser.add_argument('--weight-decay', type=float)
@@ -50,7 +51,7 @@ parser.add_argument('--F', type=int, help='Maximum size of frequency masks.')
 args = parser.parse_args()
 
 
-excluded_args = ['epochs', 'precompute_spect', 'downsampling', 'window_length','window_hop']
+excluded_args = ['epochs', 'precompute_spect', 'downsampling', 'window_length','window_hop', 'model_path']
 param_dict = {k: v for k, v in vars(args).items() if not k in excluded_args}
 param_str = '__'.join([f'{k}={str(v)}' for k, v in param_dict.items()])
 
@@ -173,13 +174,27 @@ val = torch.utils.data.Subset(data, test_indices)
 ################
 # Define model #
 ################
-if args.model == 'resnet':
-    model = ResidualClassifier(in_channels, args.filters, [2, 2, 2, 2], num_classes, dim=args.dim)
-elif args.model == 'baseline':
-    model = BaselineClassifier(in_channels, args.filters, 256, num_classes, dim=args.dim)
+# Continue training if --model-path is given
+if args.model_path:
+    try:
+        # Load the weights
+        state_dict = torch.load(args.model_path)
+        # Create the model with those weights
+        model = ResidualClassifier(in_channels, args.filters, [2, 2, 2, 2], num_classes, dim=args.dim)
+        model.to(device, dtype=torch.double)
+        model.load_state_dict(state_dict=state_dict)
+        print("Model loaded : "+args.model_path)
+    except:
+        print("Not Found : "+args.model_path)
+        raise NameError
 else:
-    raise RuntimeError
-model.to(device, dtype=torch.double)
+    if args.model == 'resnet':
+        model = ResidualClassifier(in_channels, args.filters, [2, 2, 2, 2], num_classes, dim=args.dim)
+    elif args.model == 'baseline':
+        model = BaselineClassifier(in_channels, args.filters, 256, num_classes, dim=args.dim)
+    else:
+        raise RuntimeError
+    model.to(device, dtype=torch.double)
 
 
 ############
@@ -232,7 +247,7 @@ callbacks = [
     ReduceLROnPlateau(monitor='val_loss', patience=5, verbose=True, min_delta=0.25),
     ModelCheckpoint(filepath=PATH + f'/models/{param_str}.pt',
                     monitor='val_loss', save_best_only=True, verbose=True),
-    CSVLogger(PATH + f'/logs/{param_str}.csv'),
+    CSVLogger(PATH + f'/logs/{param_str}.csv', append=False),
 ]
 
 fit(
