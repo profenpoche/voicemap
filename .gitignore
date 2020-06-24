@@ -117,3 +117,5 @@ local/
 share/
 saved_models/
 data/*.old
+data/testPrediction
+nohup.out

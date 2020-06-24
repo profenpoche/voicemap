@@ -21,8 +21,8 @@ echo -e "\nInfo: Change the model and the audio file used in bin/predict.sh\n"
 # --device cuda 
 
 python3.7 ${path}experiments/predict.py \
-	--model-path "saved_models/lr=0.0001__epoch=35__acc=0.865.pt" \
-	--audio-path "data/testPrediction/pob2.flac" \
+	--model-path "saved_models/87.2.pt" \
+	--audio-path "data/testPrediction/pob.flac" \
 	--filters 128 \
 	
 	

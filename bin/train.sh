@@ -39,6 +39,7 @@ echo -e "\n\n`date` : Beginning of the training...\n\n" >> ${path}logs/training.
 
 nohup python3.7 ${path}experiments/train.py \
     --model resnet \
+	--model-path saved_models/87.pt \
 	--dim 1 \
 	--lr 0.0001 \
 	--weight-decay 0.01 \

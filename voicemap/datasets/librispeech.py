@@ -167,7 +167,7 @@ class LibriSpeech(AudioDataset):
 
     @property
     def num_classes(self):
-        print("\n\nIn LibriSpeech there are "+str(len(self.df['speaker_id'].unique()))+" speakers")
+        print("In LibriSpeech there are "+str(len(self.df['speaker_id'].unique()))+" speakers")
         return len(self.df['speaker_id'].unique())
 
     def index_subset(self, subset):
