@@ -179,14 +179,14 @@ if args.model_path:
     try:
         # Load the weights
         state_dict = torch.load(args.model_path)
-        # Create the model with those weights
-        model = ResidualClassifier(in_channels, args.filters, [2, 2, 2, 2], num_classes, dim=args.dim)
-        model.to(device, dtype=torch.double)
-        model.load_state_dict(state_dict=state_dict)
-        print("Model loaded : "+args.model_path)
     except:
         print("Not Found : "+args.model_path)
-        raise NameError
+        raise FileNotFoundError
+    # Create the model with those weights
+    model = ResidualClassifier(in_channels, args.filters, [2, 2, 2, 2], num_classes, dim=args.dim)
+    model.to(device, dtype=torch.double)
+    model.load_state_dict(state_dict=state_dict)
+    print("Model loaded : "+args.model_path)
 else:
     if args.model == 'resnet':
         model = ResidualClassifier(in_channels, args.filters, [2, 2, 2, 2], num_classes, dim=args.dim)
@@ -247,7 +247,7 @@ callbacks = [
     ReduceLROnPlateau(monitor='val_loss', patience=5, verbose=True, min_delta=0.25),
     ModelCheckpoint(filepath=PATH + f'/models/{param_str}.pt',
                     monitor='val_loss', save_best_only=True, verbose=True),
-    CSVLogger(PATH + f'/logs/{param_str}.csv', append=False),
+    CSVLogger(PATH + f'/logs/{param_str}.csv', append=True),
 ]
 
 fit(
