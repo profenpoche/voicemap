@@ -8,8 +8,9 @@ from multiprocessing import cpu_count
 import argparse
 from olympic.callbacks import CSVLogger, Evaluate, ReduceLROnPlateau, ModelCheckpoint
 from olympic import fit
+from typing import Union, List
 
-from voicemap.datasets import LibriSpeech, SpeakersInTheWild, ClassConcatDataset, SpectrogramDataset, DatasetFolder
+from voicemap.datasets import LibriSpeech, SpeakersInTheWild, ClassConcatDataset, SpectrogramDataset, DatasetFolder, PredictionAudioDataset
 from voicemap.models import ResidualClassifier, BaselineClassifier
 from voicemap.utils import whiten, setup_dirs
 from voicemap.eval import VerificationMetrics
@@ -22,7 +23,7 @@ from voicemap.eval import unseen_speakers_evaluation
 import soundfile as sf
 from pydub import AudioSegment
 import os
-
+import sys
 import time
 start_time = time.time()
 
@@ -46,12 +47,16 @@ parser.add_argument('--audio-path', type=str, default="data/LibriSpeech/dev-clea
 # parser.add_argument('--audio-path', type=str, default="/home/iribarnesy/Documents/Info/Stage_Pep/voicemap-pep2/voicemap/data/LibriSpeech/dev-clean/174/168635/174-168635-0005.flac")
 parser.add_argument('--dim', type=int, default=1)
 parser.add_argument('--filters', type=int)
+parser.add_argument('--num-speakers', type=int)
 parser.add_argument('--batch-size', type=int, default=64)
 parser.add_argument('--n-seconds', type=float, default=3)
 parser.add_argument('--downsampling', type=int, default=4)
-parser.add_argument('--window-length', type=float, help='STFT window length in seconds.', default=0.1)
+parser.add_argument('--spectrogram', type=lambda x: x.lower()[0] == 't', default=False,
+                    help='Whether or not to use raw waveform or a spectogram as inputs.')
+parser.add_argument('--window-length', type=float, help='STFT window length in seconds.', default=0.02)
+parser.add_argument('--window-hop', type=float, help='STFT window hop in seconds.', default=0.01)
 parser.add_argument('--device', type=str, default='cuda')
-parser.add_argument('--local', type=bool, default=False)
+parser.add_argument('--local',  type=lambda x: x.lower()[0] == 't', default=False)
 args = parser.parse_args()
 
 #############
@@ -59,10 +64,18 @@ args = parser.parse_args()
 #############
 # Device must be 'cpu' if no gpu found
 device = torch.device(args.device)
-in_channels = 1
+if args.spectrogram:
+    if args.dim == 1:
+        in_channels = int(args.window_length * 16000) // 2 + 1
+    elif args.dim == 2:
+        in_channels = 1
+    else:
+        raise RuntimeError
+else:
+    in_channels = 1
 test_size = 0.0005
 test_size_unseen = 0.01
-num_classes = 1291
+num_classes = args.num_speakers
 
 N_SPEAKERS_EVALUATION = 7
 
@@ -74,8 +87,23 @@ def generateDataloaders():
     librispeech_subsets = ['train-clean-100', 'train-clean-360', 'train-other-500']
     unseen_subset = 'dev-clean'
 
-    librispeech = LibriSpeech(librispeech_subsets, args.n_seconds, args.downsampling, stochastic=True, pad=False)
-    librispeech_unseen = LibriSpeech(unseen_subset, args.n_seconds, args.downsampling, stochastic=True, pad=False)
+    if args.spectrogram:
+        librispeech = SpectrogramDataset(
+            LibriSpeech(librispeech_subsets, args.n_seconds, args.downsampling, stochastic=True, pad=False),
+            normalisation='global',
+            window_length=args.window_length,
+            window_hop=args.window_hop
+        )
+        librispeech_unseen = SpectrogramDataset(
+            LibriSpeech(unseen_subset, args.n_seconds, args.downsampling, stochastic=True, pad=False),
+            normalisation='global',
+            window_length=args.window_length,
+            window_hop=args.window_hop
+        )
+    else:
+        librispeech = LibriSpeech(librispeech_subsets, args.n_seconds, args.downsampling, stochastic=True, pad=False)
+        librispeech_unseen = LibriSpeech(unseen_subset, args.n_seconds, args.downsampling, stochastic=True, pad=False)
+    
 
     # num_classes of the trained model (in local we have less speakers)
     # num_classes = librispeech.num_classes
@@ -117,37 +145,45 @@ def generateDataloaders():
         "datasets_sampling_rate": dataset_sampling_rate
     }
 
-def prepare_batch(batch):
-    # Normalise inputs
-    # Move to GPU if possible and convert targets to int
-    x, y = batch
-    if (args.device == 'cpu'):
-        return whiten(x), y.long()
-    else:
-        return whiten(x).cuda(), y.long().cuda()
-
+if args.spectrogram:
+    def prepare_batch(batch):
+        # Normalise inputs
+        # Move to GPU and convert targets to int
+        x, y = batch
+        return x.double().cuda(), y.long().cuda()
+else:
+    def prepare_batch(batch):
+        # Normalise inputs
+        # Move to GPU if possible and convert targets to int
+        x, y = batch
+        if (args.device == 'cpu'):
+            return whiten(x), y.long()
+        else:
+            return whiten(x).cuda(), y.long().cuda()
 ##############################
 # Loading of the saved model #
 ##############################
 # Load the weights of the network
-if args.device == 'cpu':
-    state_dict = torch.load(args.model_path, map_location='cpu')
-else:
-    assert torch.cuda.is_available()
-    state_dict = torch.load(args.model_path)
+def load_model(args):
+    if args.device == 'cpu':
+        state_dict = torch.load(args.model_path, map_location='cpu')
+    else:
+        assert torch.cuda.is_available()
+        state_dict = torch.load(args.model_path)
 
-# Create the model with those weights
-model = ResidualClassifier(in_channels, args.filters, [2, 2, 2, 2], num_classes, dim=args.dim)
-model.to(device, dtype=torch.double)
-model.load_state_dict(state_dict=state_dict)
-print("Model loaded : "+args.model_path)
-model.eval()
+    # Create the model with those weights
+    model = ResidualClassifier(in_channels, args.filters, [2, 2, 2, 2], num_classes, dim=args.dim)
+    model.to(device, dtype=torch.double)
+    model.load_state_dict(state_dict=state_dict)
+    print("Model loaded : "+args.model_path)
+    model.eval()
+    return model
 
 #########################
 # Prediction of subsets #
 #########################
 
-def predictSubset(dataloader):
+def predictSubset(dataloader, model):
     with torch.no_grad():
         for batch in dataloader:
             x, y = prepare_batch(batch)
@@ -162,48 +198,24 @@ def predictSubset(dataloader):
         v = NAMED_METRICS['accuracy'](y, y_pred)
         print("accuracy : "+str(v*100)+"%")
 
-################################
-# Extraction of an audio file #
-################################
-# Conversion if necessary (only .wav -> .flac)
-def getAudioFromFile(audio_path, dataset_sampling_rate, n_seconds, downsampling, device):
-    filename, extension = os.path.splitext(audio_path)
-    if extension == '.wav' :
-        audio_path = filename + ".flac"
-        song = AudioSegment.from_wav(audio_path)
-        song.export(audio_path,format = "flac")
-    elif extension == '.flac':
-        pass
-    else:
-        raise RuntimeError
-
-    # Read the .flac file
-    instance, samplerate = sf.read(audio_path)
-    # Reduce its size
-    fragment_length = int(n_seconds * dataset_sampling_rate)
-    fragment_start_index = 0
-    if args.n_seconds is not None:
-        instance = instance[fragment_start_index:fragment_start_index+fragment_length]
-
-    # Extract the first channel (necessary if the file is double-channel, not usual)
-    if len(instance.shape) > 1:
-        instance = np.transpose(instance)
-        instance = instance[0]
-        instance = np.transpose(instance)
-
-    instance = instance[np.newaxis, np.newaxis, ::downsampling]
-    instance = torch.from_numpy(instance).to(device)
-    return instance
 
 ###############################
 # Prediction of an audio file #
 ###############################
-def predictAudioFile(audio_path, model, sampling_rate, n_seconds, downsampling, device):
+# getitem from the dataset (ie audio array) and predict the speaker with the model
+# Print the N_SPEAKERS_EVALUATION speakers it is most confident of
+def predictAudioFile(predictionDataloader, model):
     with torch.no_grad():
-        print("\n-------------- Prediction of an audio : " + audio_path)
-        instance = getAudioFromFile(audio_path, sampling_rate, n_seconds, downsampling, device)
-        y_pred = model(instance)
-
+        print("\n-------------- Prediction of an audio : " + predictionDataloader.dataset.df['filepath'][0])
+        try:
+            for batch in predictionDataloader:
+                x, y = prepare_batch(batch)
+                y_pred = model(x)
+        except NameError:
+            raise NameError
+        except:
+            e = sys.exc_info()[0]
+            print(e)
         values = y_pred.data[0].tolist()
         most_confident_speakers = []
         speakers_confidence = []
@@ -219,8 +231,12 @@ def predictAudioFile(audio_path, model, sampling_rate, n_seconds, downsampling, 
         return y_pred.data[0].tolist(), most_confident_speakers
 
 ###############################
-# Prediction of an audio file #
+# Prediction - speaker association #
 ###############################
+# Ensures that the predicted speaker was not associated to another audio
+#
+# Compare the recognized speakers for the current audio and the speakers already encountered with the previous audios
+# If a speaker recognized was already encountered and we are confident in it, remove the possibility
 def chooseSpeakerToKeep(speakers_recognized, speakers_trusted, confidences):
     if len(speakers_recognized) > 0:
         most_confident_speaker = speakers_recognized.pop(0)
@@ -233,21 +249,40 @@ def chooseSpeakerToKeep(speakers_recognized, speakers_trusted, confidences):
     else:
         return most_confident_speaker
 
-def identifySpeaker(speakers, audio_path, model, sampling_rate, n_seconds, downsampling, device):
+# Return the speaker to associate with the audio
+def identifySpeaker(speakers, predictionDataloader, model):
     speaker_identified = -1
     while speaker_identified == -1:
         start_time = time.time()
-        values, speakers_recognized = predictAudioFile(audio_path, model, sampling_rate, n_seconds, downsampling, device)
         try:
+            values, speakers_recognized = predictAudioFile(predictionDataloader, model)
             speaker_identified = chooseSpeakerToKeep(speakers_recognized, speakers, values)
+        except NameError as error:
+            print(error)
+            audio_path = str(input("Please enter another audio path for the same speaker : "))
+            predictionDataloader = buildPredictionDataloader(audio_path)
+            speaker_identified = identifySpeaker(speakers, predictionDataloader, model)
         except RuntimeError as error:
             print(error)
             print("The voice is too similar to precedent voices. Please retry to speak...")
             audio_path = str(input("Please enter another audio path for the same speaker : "))
-            speaker_identified = identifySpeaker(speakers, audio_path, model, sampling_rate, n_seconds, downsampling, device)
+            predictionDataloader = buildPredictionDataloader(audio_path)
+            speaker_identified = identifySpeaker(speakers, predictionDataloader, model)
         print("--- %s seconds ---" % (time.time() - start_time))
     return speaker_identified
 
+###############################
+#  Util functions             #
+###############################
+def addFileToPredictionDataset(filepath, predictionDataset):
+    predictionDataset.append(filepath)
+    return len(predictionDataset) - 1
+
+def buildPredictionDataloader(filename=None):
+    predictionDataset = PredictionAudioDataset(filename, args.n_seconds, args.downsampling)
+    if args.spectrogram:
+        predictionDataset = SpectrogramDataset(predictionDataset, 'global', args.window_length, args.window_hop)
+    return DataLoader(predictionDataset)
 
 ###############################
 #            Main             #
@@ -257,7 +292,7 @@ print("--- %s seconds ---" % (time.time() - start_time))
 print("\nBeginning of the activity\n")
 
 print(bcolors.HEADER + "#########################################") 
-print("Intialisation phase :")
+print("Initialisation phase :")
 print("#########################################" + bcolors.ENDC) 
 n_members = 5
 auto_prepare = int(input("Do you want to auto prepare "+str(n_members)+" speakers ? (0/1) : "))
@@ -272,18 +307,31 @@ if (auto_prepare):
 else:
     n_members = int(input("Please enter the number of speakers in the activity : "))
 
-speakers = []
+# Load the model
+model = load_model(args)
+# Initialize the list of identified and trusted speakers
+speakers = [] 
+
+# First step is to associate speakers with audio file foreach member of the group
 for m in range(n_members):
     if auto_prepare:
         audio_path = audio_paths[m]
     else:
         audio_path = str(input("Please enter the audio path for the voice of the speaker n°"+str(m)+" : "))
-    speaker_identified = identifySpeaker(speakers, audio_path, model, LibriSpeech.base_sampling_rate, args.n_seconds, args.downsampling, device)
+    
+    # It is necessary to put the audio in a dataloader before prediction
+    predictionDataloader = buildPredictionDataloader(audio_path)
+    
+    # predict the speaker (and validate him compared to the previous speakers)
+    speaker_identified = identifySpeaker(speakers, predictionDataloader, model)
     speakers.append(speaker_identified)
+    
 print(bcolors.OKBLUE + "\nSpeakers are : ")
 print(speakers)
 print(bcolors.ENDC)
 
+# Then we can loop and ask for an unlimited number of audio file
+# Foreach audio we can link the most confident speaker among the 'speakers' list
 print(bcolors.HEADER + "#########################################") 
 print("Prediction phase :")
 print("#########################################" + bcolors.ENDC) 
@@ -292,20 +340,24 @@ activity_can_continue = True
 while activity_can_continue:
     try:
         audio_path = str(input("Please enter the audio path for the speaker to identify : "))
-        values, indices = predictAudioFile(audio_path, model, LibriSpeech.base_sampling_rate, args.n_seconds, args.downsampling, device)
+        predictionDataloader = buildPredictionDataloader(audio_path)
+        values, indices = predictAudioFile(predictionDataloader, model)
         print("Confidence for each speaker previously identified : ")
         filtered_list = [values[i] for i in speakers]
         print(filtered_list)
         print(bcolors.BOLD + "====== Speaker identified is : "+str(filtered_list.index(max(filtered_list))) + bcolors.ENDC)
+    except NameError as error:
+        print(error)
+        activity_can_continue = bool(input("NameError. Press Enter to leave "))
     except RuntimeError as error:
         print(error)
         activity_can_continue = bool(input("RuntimeError. Press Enter to leave "))
 
 # print("\n-------------- Prediction of a test subset : librispeech")
-# predictSubset(dataloader)
+# predictSubset(dataloader, model)
 
 # print("\n-------------- Prediction of a test subset : librispeech (unseen)")
-# predictSubset(dataloader_unseen)
+# predictSubset(dataloader_unseen, model)
 # print("See below (with gpu) for the accuracy for unseen speakers")
 
 # if args.device == 'cuda':

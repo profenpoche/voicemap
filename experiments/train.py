@@ -9,7 +9,7 @@ import argparse
 from olympic.callbacks import CSVLogger, Evaluate, ReduceLROnPlateau, ModelCheckpoint
 from olympic import fit
 
-from voicemap.datasets import LibriSpeech, SpeakersInTheWild, ClassConcatDataset, SpectrogramDataset, DatasetFolder
+from voicemap.datasets import LibriSpeech, SpeakersInTheWild, ClassConcatDataset, SpectrogramDataset, DatasetFolder, CommonVoice, TCOF
 from voicemap.models import ResidualClassifier, BaselineClassifier
 from voicemap.utils import whiten, setup_dirs
 from voicemap.eval import VerificationMetrics
@@ -73,11 +73,12 @@ else:
 ###################
 # Create datasets #
 ###################
-librispeech_subsets = ['train-clean-100', 'train-clean-360', 'train-other-500']
+librispeech_subsets = ['train-clean-100', 'train-clean-360']
 unseen_subset = 'dev-clean'
 sitw_unseen = 'eval'
-# librispeech_subsets = ['dev-clean']
-# unseen_subset = 'test-clean'
+tcof_subsets = ['train', 'test']
+
+sampling_rate_ratio_common_voice = int(CommonVoice.base_sampling_rate / LibriSpeech.base_sampling_rate)
 
 if args.spectrogram:
     if args.precompute_spect:
@@ -110,13 +111,18 @@ if args.spectrogram:
         transform = random_crop(int(args.n_seconds / args.window_hop))
         librispeech = ClassConcatDataset([
             DatasetFolder(
-                DATA_PATH + f'/LibriSpeech.spec/{subset}/', extensions=['.npy'], loader=np.load, transform=transform)
+                DATA_PATH + f'/LibriSpeech.spec/{subset}/', extensions='.npy', loader=np.load, transform=transform)
             for subset in librispeech_subsets
         ])
-        librispeech_unseen = DatasetFolder(DATA_PATH + f'/LibriSpeech.spec/{unseen_subset}/', extensions=['.npy'],
+        librispeech_unseen = DatasetFolder(DATA_PATH + f'/LibriSpeech.spec/{unseen_subset}/', extensions='.npy',
                                            loader=np.load, transform=transform)
-        sitw = DatasetFolder(DATA_PATH + '/sitw.spec/dev/', extensions=['.npy'], loader=np.load, transform=transform)
-        sitw_unseen = DatasetFolder(DATA_PATH + '/sitw.spec/eval/', extensions=['.npy'], loader=np.load, transform=transform)
+        sitw = DatasetFolder(DATA_PATH + '/sitw.spec/dev/', extensions='.npy', loader=np.load, transform=transform)
+        sitw_unseen = DatasetFolder(DATA_PATH + '/sitw.spec/eval/', extensions='.npy', loader=np.load, transform=transform)
+        common_voice = DatasetFolder(DATA_PATH + '/common_voice-fr.spec/train/', extensions='.npy', loader=np.load, transform=transform)
+        common_voice_unseen = DatasetFolder(DATA_PATH + '/common_voice-fr.spec/test/', extensions='.npy', loader=np.load, transform=transform)
+        tcof = DatasetFolder(DATA_PATH + '/TCOF.spec/train/', extensions='.npy', loader=np.load, transform=transform)
+        tcof_unseen = DatasetFolder(DATA_PATH + f'/TCOF.spec/dev/', extensions='.npy',
+                                           loader=np.load, transform=transform)
         # speaker_ids = reduce(lambda x, y: x + y, [d.classes for d in librispeech])  # + sitw.classes
     else:
         librispeech = SpectrogramDataset(
@@ -143,16 +149,44 @@ if args.spectrogram:
             window_length=args.window_length,
             window_hop=args.window_hop
         )
+        common_voice = SpectrogramDataset(
+            CommonVoice('fr', 'train', args.n_seconds, args.downsampling, stochastic=True, pad=True),
+            normalisation='global',
+            window_length=float(args.window_length / sampling_rate_ratio_common_voice),
+            window_hop=args.window_hop
+        )
+        common_voice_unseen = SpectrogramDataset(
+            CommonVoice('fr', 'test', args.n_seconds, args.downsampling, stochastic=True, pad=True),
+            normalisation='global',
+            window_length=float(args.window_length / sampling_rate_ratio_common_voice),
+            window_hop=args.window_hop
+        )
+        tcof = SpectrogramDataset(
+            TCOF(tcof_subsets, args.n_seconds, args.downsampling, stochastic=True, pad=False),
+            normalisation='global',
+            window_length=args.window_length,
+            window_hop=args.window_hop
+        )
+        tcof_unseen = SpectrogramDataset(
+            TCOF('dev', args.n_seconds, args.downsampling, stochastic=True, pad=False),
+            normalisation='global',
+            window_length=args.window_length,
+            window_hop=args.window_hop
+        )
         # speaker_ids = librispeech.df['speaker_id'].values.tolist()  # + sitw.df['speaker_id'].values.tolist()
 else:
     librispeech = LibriSpeech(librispeech_subsets, args.n_seconds, args.downsampling, stochastic=True, pad=False)
+    librispeech_unseen = LibriSpeech(unseen_subset, args.n_seconds, args.downsampling, stochastic=True, pad=False)
     sitw = SpeakersInTheWild('dev', 'enroll-core', args.n_seconds, args.downsampling, stochastic=True, pad=False)
     sitw_unseen = SpeakersInTheWild('eval', 'enroll-core', args.n_seconds, args.downsampling, stochastic=True, pad=False)
-    librispeech_unseen = LibriSpeech(unseen_subset, args.n_seconds, args.downsampling, stochastic=True, pad=False)
+    common_voice = CommonVoice('fr', 'train', args.n_seconds, int(args.downsampling * sampling_rate_ratio_common_voice), stochastic=True, pad=True)
+    common_voice_unseen = CommonVoice('fr', 'test', args.n_seconds, int(args.downsampling * sampling_rate_ratio_common_voice), stochastic=True, pad=True)
+    tcof = TCOF(['train', 'test'], args.n_seconds, args.downsampling, stochastic=True, pad=False)
+    tcof_unseen = TCOF('dev', args.n_seconds, args.downsampling, stochastic=True, pad=False)
     # speaker_ids = librispeech.df['speaker_id'].values.tolist()  # + sitw.df['speaker_id'].values.tolist()
 
-
-data = ClassConcatDataset([librispeech, sitw])
+data = ClassConcatDataset([tcof])
+# data = tcof
 # data = librispeech
 num_classes = data.num_classes
 param_dict.update({'num_samples': len(data), 'num_classes': num_classes})
@@ -224,6 +258,7 @@ def gradient_step(model, optimiser, loss_fn, x, y, epoch):
     # Slight modification of regular gradient step to
     model.train()
     optimiser.zero_grad()
+    print("in gradient step instance is", x.shape)
     y_pred = model(x, y)
     loss = loss_fn(y_pred, y)
     loss.backward()
@@ -242,8 +277,10 @@ callbacks = [
         prefix='train_'
     ),
     Evaluate(val_loader),
-    VerificationMetrics(sitw_unseen, num_pairs=25000, prefix='sitw_eval_'),
     VerificationMetrics(librispeech_unseen, num_pairs=25000, prefix='librispeech_dev_clean_'),
+    VerificationMetrics(sitw_unseen, num_pairs=25000, prefix='sitw_eval_'),
+    VerificationMetrics(common_voice_unseen, num_pairs=25000, prefix='common_voice_test_'),
+    VerificationMetrics(tcof_unseen, num_pairs=25000, prefix='tcof_dev_'),
     ReduceLROnPlateau(monitor='val_loss', patience=5, verbose=True, min_delta=0.25),
     ModelCheckpoint(filepath=PATH + f'/models/{param_str}.pt',
                     monitor='val_loss', save_best_only=True, verbose=True),

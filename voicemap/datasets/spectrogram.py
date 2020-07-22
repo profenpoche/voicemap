@@ -1,5 +1,5 @@
 from .core import AudioDataset
-from typing import Union, Callable
+from typing import Union, Callable, List
 
 import librosa
 import numpy as np
@@ -32,6 +32,10 @@ class SpectrogramDataset(Dataset):
 
     def __len__(self):
         return len(self.dataset)
+
+    def append(self, filepaths: Union[str, List[str]]):
+        self.dataset.append(filepaths)
+        self.df = self.dataset.df
 
     @property
     def num_classes(self):

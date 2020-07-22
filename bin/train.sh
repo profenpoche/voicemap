@@ -39,21 +39,21 @@ echo -e "\n\n`date` : Beginning of the training...\n\n" >> ${path}logs/training.
 
 nohup python3.7 ${path}experiments/train.py \
     --model resnet \
-	--model-path saved_models/87.pt \
+	--model-path saved_models/peach_001.pt \
 	--dim 1 \
 	--lr 0.0001 \
 	--weight-decay 0.01 \
 	--momentum 0.9 \
 	--filters 128 \
-	--batch-size 32 \
+	--batch-size 1500 \
 	--n-seconds 3 \
-	--spectrogram False \
+	--spectrogram True \
 	--precompute-spect True \
-	--n_t 1 \
+	--n_t 0 \
 	\
-	--n_f 1 \
+	--n_f 0 \
 	\
-	--window-length 0.1 \
+	--window-length 0.02 \
 	--window-hop 0.01 \
 	--downsampling 4 \
 	--epochs 50 \

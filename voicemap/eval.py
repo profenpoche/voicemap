@@ -67,7 +67,7 @@ def unseen_speakers_evaluation(model: nn.Module, dataset: Dataset, num_pairs: in
         pbar.update(1)
 
     pbar.close()
-
+    print(labels)
     roc_auc = roc_auc_score(labels, distances)
     fpr, tpr, _ = roc_curve(labels, distances)
     eer = equal_error_rate(fpr, tpr)

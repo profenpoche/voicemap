@@ -7,19 +7,25 @@ import pandas as pd
 
 from config import DATA_PATH
 
+import soundfile as sf
+
 
 class CommonVoice(AudioDataset):
     base_sampling_rate = 48000
 
     def __init__(self,
                  language: str,
+                 subset: str,
                  seconds: Union[int, None],
+                 down_sampling: int,
                  sampling_rate: int = None,
                  stochastic: bool = True,
                  pad: bool = True,
                  data_path: str = DATA_PATH):
         self.language = language
+        self.subset = subset
         self.seconds = seconds
+        self.down_sampling = down_sampling
         self.data_path = data_path
         if sampling_rate is None:
             self.sampling_rate = self.base_sampling_rate
@@ -27,17 +33,20 @@ class CommonVoice(AudioDataset):
             if sampling_rate > self.base_sampling_rate:
                 raise ValueError('Shouldn\'t have sampling rate higher than the sampling rate of the raw data.')
             self.sampling_rate = sampling_rate
+            
+        if seconds is not None:
+            if int(seconds * self.base_sampling_rate) % down_sampling != 0:
+                raise(ValueError, 'Down sampling must be an integer divisor of the fragment length.')
 
         if seconds is not None:
             self.fragment_length = int(seconds * self.base_sampling_rate)
         self.stochastic = stochastic
         self.pad = pad
-        print(self.data_path)
-        print(f'/CommonVoice/{self.language}/validated.csv')
-        self.df = pd.read_csv(self.data_path + f'/CommonVoice/{self.language}/validated.csv', sep="\t")
+
+        self.df = pd.read_csv(self.data_path + f'/CommonVoice/{self.language}/{self.subset}.tsv', sep="\t")
         
         self.df['speaker_id'] = self.df['client_id']
-        self.df['filepath'] = self.data_path + f'/CommonVoice/{self.language}/clips/' + self.df['path'] + '.mp3'
+        self.df['filepath'] = self.data_path + f'/CommonVoice/{self.language}/clips/' + self.df['path'] # + '.mp3'
 
         self.df['index'] = self.df.index.values
 
@@ -54,6 +63,7 @@ class CommonVoice(AudioDataset):
 
     @property
     def num_classes(self):
+        print("In CommonVoice "+ self.subset +" there are "+str(len(self.df['speaker_id'].unique()))+" speakers")
         return len(self.df['speaker_id'].unique())
 
     def __getitem__(self, index):
@@ -66,19 +76,19 @@ class CommonVoice(AudioDataset):
 
         if self.seconds is not None:
             instance = instance[fragment_start_index:fragment_start_index + self.fragment_length]
+            # print("fragment_length : "+str(fragment_start_index + self.fragment_length - fragment_start_index))
+            # print("len instance before cut : "+str(len(instance)))
+            # print("len instance : "+str(len(instance)))
         else:
             # Use whole sample
             pass
-
+        # Check for required length and pad if necessary
         if hasattr(self, 'fragment_length'):
-            # Check for required length and pad if necessary
             if self.pad and len(instance) < self.fragment_length:
                 less_timesteps = self.fragment_length - len(instance)
                 if self.stochastic:
                     # Stochastic padding, ensure instance length == self.fragment_length by appending a random number of 0s
                     # before and the appropriate number of 0s after the instance
-                    less_timesteps = self.fragment_length - len(instance)
-
                     before_len = np.random.randint(0, less_timesteps)
                     after_len = less_timesteps - before_len
 
