@@ -105,8 +105,18 @@ venv.bak/
 
 # Project specific
 data/LibriSpeech/*
+data/TCOF
 data/*.csv
 .idea/*
 models/*
 logs/*
 plots/*
+bin/*
+data/CommonVoice/*
+data/sitw/*
+local/
+share/
+saved_models/
+data/*.old
+data/testPrediction
+nohup.out
