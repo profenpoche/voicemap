@@ -39,9 +39,9 @@ echo -e "\n\n`date` : Beginning of the training...\n\n" >> ${path}logs/training.
 
 nohup python3.7 ${path}experiments/train.py \
     --model resnet \
-	--model-path saved_models/peach_001.pt \
+	--model-path saved_models/peach_00001.pt \
 	--dim 1 \
-	--lr 0.0001 \
+	--lr 0.000001 \
 	--weight-decay 0.01 \
 	--momentum 0.9 \
 	--filters 128 \

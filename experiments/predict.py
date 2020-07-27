@@ -294,15 +294,18 @@ print("\nBeginning of the activity\n")
 print(bcolors.HEADER + "#########################################") 
 print("Initialisation phase :")
 print("#########################################" + bcolors.ENDC) 
-n_members = 5
+n_members = 6
 auto_prepare = int(input("Do you want to auto prepare "+str(n_members)+" speakers ? (0/1) : "))
 if (auto_prepare):
     audio_paths = [
         "data/testPrediction/activity_SId/1-10.flac", 
         "data/testPrediction/activity_SId/2-18.flac", 
         "data/testPrediction/activity_SId/3-18.flac", 
-        "data/testPrediction/activity_SId/4-1.flac", 
-        "data/testPrediction/activity_SId/5-1.flac"
+        "data/testPrediction/activity_SId/6-4.flac",
+        "data/testPrediction/activity_SId/7-2.flac",
+        "data/testPrediction/activity_SId/8-4.flac"
+        # "data/testPrediction/activity_SId/4-1.flac", 
+        # "data/testPrediction/activity_SId/5-1.flac"
         ]
 else:
     n_members = int(input("Please enter the number of speakers in the activity : "))

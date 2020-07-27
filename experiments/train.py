@@ -185,7 +185,7 @@ else:
     tcof_unseen = TCOF('dev', args.n_seconds, args.downsampling, stochastic=True, pad=False)
     # speaker_ids = librispeech.df['speaker_id'].values.tolist()  # + sitw.df['speaker_id'].values.tolist()
 
-data = ClassConcatDataset([tcof])
+data = ClassConcatDataset([librispeech, sitw, common_voice, tcof])
 # data = tcof
 # data = librispeech
 num_classes = data.num_classes
@@ -258,7 +258,6 @@ def gradient_step(model, optimiser, loss_fn, x, y, epoch):
     # Slight modification of regular gradient step to
     model.train()
     optimiser.zero_grad()
-    print("in gradient step instance is", x.shape)
     y_pred = model(x, y)
     loss = loss_fn(y_pred, y)
     loss.backward()
