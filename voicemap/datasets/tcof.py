@@ -52,14 +52,15 @@ class TCOF(AudioDataset):
         self.df = pd.DataFrame()
         for subset in subsets:
             # Get dataset info
-            cached_df = pd.read_csv(self.data_path + f'/TCOF/TCOF_{subset}.csv',
-                              delimiter=',', names=['speaker_id', 'filepath', 'transcript', 'wav_filesize'],header=1)
+            cached_df = pd.read_csv(self.data_path + f'/TCOF/TCOF_{subset}.csv')
             self.df = pd.concat([cached_df,self.df])
+
+        if not 'seconds' in self.df.columns:
+            self.df["seconds"] = self.df['wav_filesize'] / 32000
 
         # Trim too-small files
         if not self.pad and self.seconds is not None:
-            # For an audio with 16000 sample rate and 16-bit encoding (mono) there is 32000kB per second (add 2000 to be sure)
-            self.df = self.df[self.df['wav_filesize'] > 34000 * self.seconds]
+            self.df = self.df.loc[self.df['seconds'] > self.seconds]
         
         # Remove left part of speaker_id (ex : <[speaker_folder_spk85_id_]>42)
         self.df['speaker_id'] = self.df['speaker_id'].transform(lambda x: int(x.split('_id_')[1]))

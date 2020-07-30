@@ -32,6 +32,7 @@ class SpeakersInTheWild(AudioDataset):
                  pad: bool = False,
                  data_path: str = DATA_PATH):
         self.split = split
+        self.subset = subset
         self.seconds = seconds
         if seconds is not None:
             self.fragment_length = int(seconds * self.base_sampling_rate)
