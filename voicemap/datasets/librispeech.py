@@ -30,6 +30,7 @@ class LibriSpeech(AudioDataset):
                  subsets: Union[str, List[str]],
                  seconds: Union[int, None],
                  down_sampling: int,
+                 use_standardized: bool = False,
                  label: str = 'speaker',
                  stochastic: bool = True,
                  pad: bool = False,
@@ -59,65 +60,74 @@ class LibriSpeech(AudioDataset):
 
         # print('Initialising LibriSpeechDataset with minimum length = {}s and subsets = {}'.format(seconds, subsets))
 
-        cached_df = []
-        found_cache = {s: False for s in subsets}
-        if cache:
-            # Check for cached files
-            for s in subsets:
-                subset_index_path = PATH + '/data/{}.index.csv'.format(s)
-                if os.path.exists(subset_index_path):
-                    cached_df.append(pd.read_csv(subset_index_path))
-                    found_cache[s] = True
+        # Use a csv with samples standardized (each speaker with the same number of samples)
+        if use_standardized:
+            self.df = pd.read_csv(f"{DATA_PATH}/LibriSpeech/LibriSpeech_{subsets[0]}_standardized.csv")
+            print(f"LibriSpeech loaded from '{DATA_PATH}/LibriSpeech/LibriSpeech_{subsets[0]}_standardized.csv'")
 
-        # Index the remaining subsets if any
-        if all(found_cache.values()) and cache:
-            self.df = pd.concat(cached_df)
         else:
-            df = pd.read_csv(PATH +'/data/LibriSpeech/SPEAKERS.TXT', skiprows=11, delimiter='|', error_bad_lines=False)
-            df.columns = [col.strip().replace(';', '').lower() for col in df.columns]
-            df = df.assign(
-                sex=df['sex'].apply(lambda x: x.strip()),
-                subset=df['subset'].apply(lambda x: x.strip()),
-                name=df['name'].apply(lambda x: x.strip()),
-            )
+            cached_df = []
+            found_cache = {s: False for s in subsets}
+            if cache:
+                # Check for cached files
+                for s in subsets:
+                    subset_index_path = PATH + '/data/{}.index.csv'.format(s)
+                    if os.path.exists(subset_index_path):
+                        cached_df.append(pd.read_csv(subset_index_path))
+                        found_cache[s] = True
 
-            audio_files = []
-            for subset, found in found_cache.items():
-                if not found:
-                    audio_files += self.index_subset(subset)
+            # Index the remaining subsets if any
+            if all(found_cache.values()) and cache:
+                self.df = pd.concat(cached_df)
+            else:
+                df = pd.read_csv(PATH +'/data/LibriSpeech/SPEAKERS.TXT', skiprows=11, delimiter='|', error_bad_lines=False)
+                df.columns = [col.strip().replace(';', '').lower() for col in df.columns]
+                df = df.assign(
+                    sex=df['sex'].apply(lambda x: x.strip()),
+                    subset=df['subset'].apply(lambda x: x.strip()),
+                    name=df['name'].apply(lambda x: x.strip()),
+                )
 
-            # Merge individual audio files with indexing dataframe
-            df = pd.merge(df, pd.DataFrame(audio_files))
+                audio_files = []
+                for subset, found in found_cache.items():
+                    if not found:
+                        audio_files += self.index_subset(subset)
 
-            # # Concatenate with already existing dataframe if any exist
-            self.df = pd.concat(cached_df+[df])
+                # Merge individual audio files with indexing dataframe
+                df = pd.merge(df, pd.DataFrame(audio_files))
 
-        # Save index files to data folder
-        for s in subsets:
-            self.df[self.df['subset'] == s].to_csv(PATH + '/data/{}.index.csv'.format(s), index=False)
+                # # Concatenate with already existing dataframe if any exist
+                self.df = pd.concat(cached_df+[df])
 
-        # Trim too-small files
-        if not self.pad and self.seconds is not None:
-            self.df = self.df[self.df['seconds'] > self.seconds]
-        self.num_speakers = len(self.df['id'].unique())
+            # Save index files to data folder
+            for s in subsets:
+                self.df[self.df['subset'] == s].to_csv(PATH + '/data/{}.index.csv'.format(s), index=False)
 
-        # Renaming for clarity
-        self.df = self.df.rename(columns={'id': 'speaker_id', 'minutes': 'speaker_minutes'})
+            # Trim too-small files
+            if not self.pad and self.seconds is not None:
+                self.df = self.df[self.df['seconds'] > self.seconds]
+            self.num_speakers = len(self.df['id'].unique())
 
-        # Index of dataframe has direct correspondence to item in dataset
-        self.df = self.df.reset_index(drop=True)
-        self.df = self.df.assign(id=self.df.index.values)
+            # Renaming for clarity
+            self.df = self.df.rename(columns={'id': 'speaker_id', 'minutes': 'speaker_minutes'})
+
+            # Create sex dict
+            self.datasetid_to_sex = self.df.to_dict()['sex']
+            
+            # Index of dataframe has direct correspondence to item in dataset
+            self.df = self.df.reset_index(drop=True)
+            self.df = self.df.assign(id=self.df.index.values)
+
+            print('Finished indexing data. {} usable files found.'.format(len(self)))
 
         # Create dicts
         self.datasetid_to_filepath = self.df.to_dict()['filepath']
         self.datasetid_to_speaker_id = self.df.to_dict()['speaker_id']
-        self.datasetid_to_sex = self.df.to_dict()['sex']
 
         # Convert arbitrary integer labels of dataset to ordered 0-(num_speakers - 1) labels
         self.unique_speakers = sorted(self.df['speaker_id'].unique())
         self.speaker_id_mapping = {self.unique_speakers[i]: i for i in range(self.num_classes)}
 
-        print('Finished indexing data. {} usable files found.'.format(len(self)))
 
     def __getitem__(self, index):
         instance, samplerate = sf.read(self.datasetid_to_filepath[index])

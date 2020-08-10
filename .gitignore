@@ -109,7 +109,7 @@ data/TCOF
 data/*.csv
 .idea/*
 models/*
-logs/*
+logs/*.log
 plots/*
 bin/*
 data/CommonVoice/*

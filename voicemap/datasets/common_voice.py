@@ -8,6 +8,7 @@ import pandas as pd
 from config import DATA_PATH
 
 import soundfile as sf
+import os
 
 
 class CommonVoice(AudioDataset):
@@ -18,6 +19,7 @@ class CommonVoice(AudioDataset):
                  subset: str,
                  seconds: Union[int, None],
                  down_sampling: int,
+                 use_standardized: bool = False,
                  sampling_rate: int = None,
                  stochastic: bool = True,
                  pad: bool = True,
@@ -27,6 +29,7 @@ class CommonVoice(AudioDataset):
         self.seconds = seconds
         self.down_sampling = down_sampling
         self.data_path = data_path
+
         if sampling_rate is None:
             self.sampling_rate = self.base_sampling_rate
         else:
@@ -43,12 +46,29 @@ class CommonVoice(AudioDataset):
         self.stochastic = stochastic
         self.pad = pad
 
-        self.df = pd.read_csv(self.data_path + f'/CommonVoice/{self.language}/{self.subset}.tsv', sep="\t")
-        
-        self.df['speaker_id'] = self.df['client_id']
-        self.df['filepath'] = self.data_path + f'/CommonVoice/{self.language}/clips/' + self.df['path'] # + '.mp3'
+        # Use a csv with samples standardized (each speaker with the same number of samples)
+        if use_standardized:
+            self.df = pd.read_csv(f"{DATA_PATH}/CommonVoice/CommonVoice_{subset}_standardized.csv")
+            print(f"CommonVoice loaded from '{DATA_PATH}/CommonVoice/CommonVoice_{subset}_standardized.csv'")
+        else:
+            # if the {subset}_transformed.tsv is present we can load the data from it
+            if (os.path.isfile(self.data_path + f'/CommonVoice/{self.language}/{self.subset}_transformed.tsv')):
+                self.df = pd.read_csv(self.data_path + f'/CommonVoice/{self.language}/{self.subset}_transformed.tsv')
+            else:
+                self.df = pd.read_csv(self.data_path + f'/CommonVoice/{self.language}/{self.subset}.tsv', sep="\t")
+                
+                self.df['speaker_id'] = self.df['client_id']
+                self.df['filepath'] = self.data_path + f'/CommonVoice/{self.language}/clips/' + self.df['path'] # + '.mp3'
 
-        self.df['index'] = self.df.index.values
+                self.df['index'] = self.df.index.values
+
+            # Trim too-small files
+            if not self.pad and self.seconds is not None and 'seconds' in self.df.columns:
+                self.df = self.df[self.df['seconds'] > self.seconds]
+
+            # Index of dataframe has direct correspondence to item in dataset
+            self.df = self.df.reset_index(drop=True)
+            self.df = self.df.assign(id=self.df.index.values)
 
         # Create dicts
         self.datasetid_to_filepath = self.df.to_dict()['filepath']

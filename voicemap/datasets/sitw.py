@@ -28,10 +28,12 @@ class SpeakersInTheWild(AudioDataset):
                  subset: Union[str, List[str]],
                  seconds: Union[int, None],
                  down_sampling: int,
+                 use_standardized: bool = False,
                  stochastic: bool = True,
                  pad: bool = False,
                  data_path: str = DATA_PATH):
         self.split = split
+        self.subset = subset
         self.seconds = seconds
         if seconds is not None:
             self.fragment_length = int(seconds * self.base_sampling_rate)
@@ -40,23 +42,28 @@ class SpeakersInTheWild(AudioDataset):
         self.pad = pad
         self.data_path = data_path
 
-        # Get dataset info
-        self.df = pd.read_csv(self.data_path + f'/sitw/{self.split}/lists/{subset}.lst',
-                              delimiter=' ', names=['id', 'filepath'])
+        # Use a csv with samples standardized (each speaker with the same number of samples)
+        if use_standardized:
+            self.df = pd.read_csv(f"{DATA_PATH}/sitw/sitw_{split}_standardized.csv")
+            print(f"sitw loaded from '{DATA_PATH}/sitw/sitw_{split}_standardized.csv'")
+        else:
+            # Get dataset info
+            self.df = pd.read_csv(self.data_path + f'/sitw/{self.split}/lists/{subset}.lst',
+                                delimiter=' ', names=['id', 'filepath'])
 
-        # Have to use /keys/meta.list to get speaker_id
-        meta_names = ['filepath', 'speaker_id', 'gender', 'mic_type', 'session_id', 'audio_start', 'audio_end',
-                      'num_speakers', 'artifact_labels', 'artifact_level', 'environment', 'tag1', 'tag2', 'tag3',
-                      'tag4']
+            # Have to use /keys/meta.list to get speaker_id
+            meta_names = ['filepath', 'speaker_id', 'gender', 'mic_type', 'session_id', 'audio_start', 'audio_end',
+                        'num_speakers', 'artifact_labels', 'artifact_level', 'environment', 'tag1', 'tag2', 'tag3',
+                        'tag4']
 
-        # Eval set has a greater number of tags
-        if self.split == 'eval':
-            meta_names += ['tag5', 'tag6', 'tag7']
+            # Eval set has a greater number of tags
+            if self.split == 'eval':
+                meta_names += ['tag5', 'tag6', 'tag7']
 
-        meta = pd.read_csv(self.data_path + f'/sitw/{self.split}/keys/meta.lst', delimiter=' ', names=meta_names)
-        self.df = self.df.merge(meta, on='filepath')
-        self.df['filepath'] = self.data_path + f'/sitw/{self.split}/' + self.df['filepath']
-        self.df['index'] = self.df.index.values
+            meta = pd.read_csv(self.data_path + f'/sitw/{self.split}/keys/meta.lst', delimiter=' ', names=meta_names)
+            self.df = self.df.merge(meta, on='filepath')
+            self.df['filepath'] = self.data_path + f'/sitw/{self.split}/' + self.df['filepath']
+            self.df['index'] = self.df.index.values
 
         # Create dicts
         self.datasetid_to_filepath = self.df.to_dict()['filepath']

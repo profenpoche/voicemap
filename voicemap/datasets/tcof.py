@@ -34,6 +34,7 @@ class TCOF(AudioDataset):
                  subsets: Union[str, List[str]],
                  seconds: Union[int, None],
                  down_sampling: int,
+                 use_standardized: bool = False,
                  stochastic: bool = True,
                  pad: bool = False,
                  data_path: str = DATA_PATH):
@@ -48,25 +49,32 @@ class TCOF(AudioDataset):
 
         if isinstance(subsets, str):
             subsets = [subsets]
-    
-        self.df = pd.DataFrame()
-        for subset in subsets:
-            # Get dataset info
-            cached_df = pd.read_csv(self.data_path + f'/TCOF/TCOF_{subset}.csv',
-                              delimiter=',', names=['speaker_id', 'filepath', 'transcript', 'wav_filesize'],header=1)
-            self.df = pd.concat([cached_df,self.df])
 
-        # Trim too-small files
-        if not self.pad and self.seconds is not None:
-            # For an audio with 16000 sample rate and 16-bit encoding (mono) there is 32000kB per second (add 2000 to be sure)
-            self.df = self.df[self.df['wav_filesize'] > 34000 * self.seconds]
+        # Use a csv with samples standardized (each speaker with the same number of samples)
+        if use_standardized:
+            self.df = pd.read_csv(f"{DATA_PATH}/TCOF/TCOF_{subsets[0]}_standardized.csv")
+            print(f"TCOF loaded from '{DATA_PATH}/TCOF/TCOF_{subsets[0]}_standardized.csv'")
         
-        # Remove left part of speaker_id (ex : <[speaker_folder_spk85_id_]>42)
-        self.df['speaker_id'] = self.df['speaker_id'].transform(lambda x: int(x.split('_id_')[1]))
+        else:
+            self.df = pd.DataFrame()
+            for subset in subsets:
+                # Get dataset info
+                cached_df = pd.read_csv(self.data_path + f'/TCOF/TCOF_{subset}.csv')
+                self.df = pd.concat([cached_df,self.df])
 
-        # Index of dataframe has direct correspondence to item in dataset
-        self.df = self.df.reset_index(drop=True)
-        self.df = self.df.assign(id=self.df.index.values)
+            if not 'seconds' in self.df.columns:
+                self.df["seconds"] = self.df['wav_filesize'] / 32000
+
+            # Trim too-small files
+            if not self.pad and self.seconds is not None:
+                self.df = self.df.loc[self.df['seconds'] > self.seconds]
+            
+            # Remove left part of speaker_id (ex : <[speaker_folder_spk85_id_]>42)
+            self.df['speaker_id'] = self.df['speaker_id'].transform(lambda x: int(x.split('_id_')[1]))
+
+            # Index of dataframe has direct correspondence to item in dataset
+            self.df = self.df.reset_index(drop=True)
+            self.df = self.df.assign(id=self.df.index.values)
 
         # Create dicts
         self.datasetid_to_filepath = self.df.to_dict()['filepath']
