@@ -19,6 +19,7 @@ echo -e "\n\n`date` : Beginning of the training...\n\n" >> ${path}logs/training.
 ## Comments about the hyperparams
 
 # --model resnet \ # resnet ou baseline
+# --model-path \ # path of the model to load before training
 # --dim 1  \
 # --lr 0.01 \ # Initial learning rate
 # --weight-decay 0.05 \ # Prevents the weights from growing too large
@@ -39,9 +40,8 @@ echo -e "\n\n`date` : Beginning of the training...\n\n" >> ${path}logs/training.
 
 nohup python3.7 ${path}experiments/train.py \
     --model resnet \
-	--model-path saved_models/peach_00001.pt \
 	--dim 1 \
-	--lr 0.000001 \
+	--lr 0.001 \
 	--weight-decay 0.01 \
 	--momentum 0.9 \
 	--filters 128 \
@@ -49,6 +49,7 @@ nohup python3.7 ${path}experiments/train.py \
 	--n-seconds 3 \
 	--spectrogram True \
 	--precompute-spect True \
+	--use-standardized True \
 	--n_t 0 \
 	\
 	--n_f 0 \
