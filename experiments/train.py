@@ -38,6 +38,8 @@ parser.add_argument('--filters', type=int)
 parser.add_argument('--batch-size', type=int)
 parser.add_argument('--n-seconds', type=float)
 parser.add_argument('--downsampling', type=int)
+parser.add_argument('--use-standardized', type=lambda x: x.lower()[0] == 't', default=True,
+                    help='Whether or not to use standardized data')
 parser.add_argument('--spectrogram', type=lambda x: x.lower()[0] == 't', default=True,
                     help='Whether or not to use raw waveform or a spectogram as inputs.')
 parser.add_argument('--precompute-spect', type=lambda x: x.lower()[0] == 't', default=True,
@@ -73,7 +75,10 @@ else:
 ###################
 # Create datasets #
 ###################
-librispeech_subsets = ['train-clean-100', 'train-clean-360']
+if args.use_standardized:
+    librispeech_subsets = ['train']
+else:
+    librispeech_subsets = ['train-clean-100', 'train-clean-360']
 unseen_subset = 'dev-clean'
 sitw_unseen = 'eval'
 tcof_subsets = ['train', 'test']
@@ -126,66 +131,66 @@ if args.spectrogram:
         # speaker_ids = reduce(lambda x, y: x + y, [d.classes for d in librispeech])  # + sitw.classes
     else:
         librispeech = SpectrogramDataset(
-            LibriSpeech(librispeech_subsets, args.n_seconds, args.downsampling, stochastic=True, pad=False),
+            LibriSpeech(librispeech_subsets, args.n_seconds, args.downsampling, use_standardized=args.use_standardized, stochastic=True, pad=False),
             normalisation='global',
             window_length=args.window_length,
             window_hop=args.window_hop
         )
         librispeech_unseen = SpectrogramDataset(
-            LibriSpeech(unseen_subset, args.n_seconds, args.downsampling, stochastic=True, pad=False),
+            LibriSpeech(unseen_subset, args.n_seconds, args.downsampling, use_standardized=False, stochastic=True, pad=False),
             normalisation='global',
             window_length=args.window_length,
             window_hop=args.window_hop
         )
         sitw = SpectrogramDataset(
-            SpeakersInTheWild('dev', 'enroll-core', args.n_seconds, args.downsampling, stochastic=True, pad=False),
+            SpeakersInTheWild('dev', 'enroll-core', args.n_seconds, args.downsampling, use_standardized=False, stochastic=True, pad=False),
             normalisation='global',
             window_length=args.window_length,
             window_hop=args.window_hop
         )
         sitw_unseen = SpectrogramDataset(
-            SpeakersInTheWild('eval', 'enroll-core', args.n_seconds, args.downsampling, stochastic=True, pad=False),
+            SpeakersInTheWild('eval', 'enroll-core', args.n_seconds, args.downsampling, use_standardized=False, stochastic=True, pad=False),
             normalisation='global',
             window_length=args.window_length,
             window_hop=args.window_hop
         )
         common_voice = SpectrogramDataset(
-            CommonVoice('fr', 'train', args.n_seconds, args.downsampling, stochastic=True, pad=True),
+            CommonVoice('fr', 'train', args.n_seconds, args.downsampling, use_standardized=args.use_standardized, stochastic=True, pad=True),
             normalisation='global',
             window_length=float(args.window_length / sampling_rate_ratio_common_voice),
             window_hop=args.window_hop
         )
         common_voice_unseen = SpectrogramDataset(
-            CommonVoice('fr', 'test', args.n_seconds, args.downsampling, stochastic=True, pad=True),
+            CommonVoice('fr', 'test', args.n_seconds, args.downsampling, use_standardized=False, stochastic=True, pad=True),
             normalisation='global',
             window_length=float(args.window_length / sampling_rate_ratio_common_voice),
             window_hop=args.window_hop
         )
         tcof = SpectrogramDataset(
-            TCOF(tcof_subsets, args.n_seconds, args.downsampling, stochastic=True, pad=False),
+            TCOF(tcof_subsets, args.n_seconds, args.downsampling, use_standardized=args.use_standardized, stochastic=True, pad=False),
             normalisation='global',
             window_length=args.window_length,
             window_hop=args.window_hop
         )
         tcof_unseen = SpectrogramDataset(
-            TCOF('dev', args.n_seconds, args.downsampling, stochastic=True, pad=False),
+            TCOF('dev', args.n_seconds, args.downsampling, use_standardized=False, stochastic=True, pad=False),
             normalisation='global',
             window_length=args.window_length,
             window_hop=args.window_hop
         )
         # speaker_ids = librispeech.df['speaker_id'].values.tolist()  # + sitw.df['speaker_id'].values.tolist()
 else:
-    librispeech = LibriSpeech(librispeech_subsets, args.n_seconds, args.downsampling, stochastic=True, pad=False)
-    librispeech_unseen = LibriSpeech(unseen_subset, args.n_seconds, args.downsampling, stochastic=True, pad=False)
-    sitw = SpeakersInTheWild('dev', 'enroll-core', args.n_seconds, args.downsampling, stochastic=True, pad=False)
-    sitw_unseen = SpeakersInTheWild('eval', 'enroll-core', args.n_seconds, args.downsampling, stochastic=True, pad=False)
-    common_voice = CommonVoice('fr', 'train', args.n_seconds, int(args.downsampling * sampling_rate_ratio_common_voice), stochastic=True, pad=True)
-    common_voice_unseen = CommonVoice('fr', 'test', args.n_seconds, int(args.downsampling * sampling_rate_ratio_common_voice), stochastic=True, pad=True)
-    tcof = TCOF(['train', 'test'], args.n_seconds, args.downsampling, stochastic=True, pad=False)
-    tcof_unseen = TCOF('dev', args.n_seconds, args.downsampling, stochastic=True, pad=False)
+    librispeech = LibriSpeech(librispeech_subsets, args.n_seconds, args.downsampling, use_standardized=args.use_standardized, stochastic=True, pad=False)
+    librispeech_unseen = LibriSpeech(unseen_subset, args.n_seconds, args.downsampling, use_standardized=False, stochastic=True, pad=False)
+    sitw = SpeakersInTheWild('dev', 'enroll-core', args.n_seconds, args.downsampling, use_standardized=False, stochastic=True, pad=False)
+    sitw_unseen = SpeakersInTheWild('eval', 'enroll-core', args.n_seconds, args.downsampling, use_standardized=False, stochastic=True, pad=False)
+    common_voice = CommonVoice('fr', 'train', args.n_seconds, int(args.downsampling * sampling_rate_ratio_common_voice), use_standardized=args.use_standardized, stochastic=True, pad=True)
+    common_voice_unseen = CommonVoice('fr', 'test', args.n_seconds, int(args.downsampling * sampling_rate_ratio_common_voice), use_standardized=False, stochastic=True, pad=True)
+    tcof = TCOF(['train', 'test'], args.n_seconds, args.downsampling, use_standardized=args.use_standardized, stochastic=True, pad=False)
+    tcof_unseen = TCOF('dev', args.n_seconds, args.downsampling, use_standardized=False, stochastic=True, pad=False)
     # speaker_ids = librispeech.df['speaker_id'].values.tolist()  # + sitw.df['speaker_id'].values.tolist()
 
-data = ClassConcatDataset([librispeech, sitw, common_voice, tcof])
+data = ClassConcatDataset([librispeech, common_voice, tcof])
 # data = tcof
 # data = librispeech
 num_classes = data.num_classes
