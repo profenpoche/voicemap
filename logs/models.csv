@@ -1,0 +1,6 @@
+model_name,details,model,dim,lr,weight_decay,momentum,filters,batch_size,n_seconds,use_standardized,spectrogram,window_length,window_hop,n_t,T,n_f,F,num_samples,num_classes,datasets,val_loss,accuracy
+gaixoa.pt,,resnet,1.0,0.0001,0.01,0.9,128.0,32.0,3.0,0.0,0.0,,,0.0,None,0.0,None,130475,1291,LS,0.12,0.658
+babybabyMario.pt,,resnet,1,0.0001,0.01,0.9,128.0,1500.0,3.0,0.0,1.0,,,0.0,None,0.0,None,133376,1291,LS,0.238,0.73
+luigi_000001.pt,with commonvoice,resnet,1,0.000001,0.01,0.9,128.0,1500.0,3.0,0.0,1.0,0.02,0.01,0.0,None,0.0,None,263978,3045,LSC,0.4136,0.8437
+peach_00001.pt,with TCOF,resnet,1,0.00001,0.01,0.9,128.0,1500.0,3.0,0.0,1.0,0.02,0.01,0.0,None,0.0,None,465597,3699,LSCT,1.08,0.58
+std_00001.pt,with 15-standardized,resnet,1.0,0.00001,0.01,0.9,128.0,1500.0,3.0,1.0,1.0,0.02,0.01,0.0,None,0.0,None,45255,3017,LCT,1.2108,0.22

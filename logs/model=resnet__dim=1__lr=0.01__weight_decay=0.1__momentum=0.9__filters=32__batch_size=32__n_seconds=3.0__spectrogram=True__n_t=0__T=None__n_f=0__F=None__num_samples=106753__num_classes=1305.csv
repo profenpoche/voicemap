@@ -1,0 +1,2 @@
+epoch,accuracy,common_voice_test_auc,common_voice_test_eer,librispeech_dev_clean_auc,librispeech_dev_clean_eer,loss,lr,sitw_eval_auc,sitw_eval_eer,tcof_dev_auc,tcof_dev_eer,train_accuracy,train_loss,val_accuracy,val_loss
+1,0.0,0.9645611506951672,0.08101833319990392,0.7690621551570539,0.3053892215568862,18.950472477713166,0.01,0.6036307374935534,0.4285714285714286,0.7024216659253155,0.36363636363636365,0.0,47414415.23172785,0.0,47411441.434283726
