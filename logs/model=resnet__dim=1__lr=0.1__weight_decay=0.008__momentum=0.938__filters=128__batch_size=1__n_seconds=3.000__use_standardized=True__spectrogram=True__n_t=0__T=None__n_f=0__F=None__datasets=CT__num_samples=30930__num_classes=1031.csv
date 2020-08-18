@@ -1,0 +1,6 @@
+epoch,accuracy,common_voice_val_auc,common_voice_val_eer,librispeech_val_auc,librispeech_val_eer,loss,lr,sitw_val_auc,sitw_val_eer,tcof_val_auc,tcof_val_eer,train_accuracy,train_loss,val_accuracy,val_loss
+1,0.00021554046772281495,0.5,0.5,0.5,0.5,nan,0.1,0.5,0.5,0.5,0.5,0.0008,nan,0.0009699321047526673,nan
+2,0.0009699321047526673,0.5,1,0.5,1,nan,0.1,0.5,1,0.5,1,0.00064,nan,0.0009699321047526673,nan
+3,0.0009699321047526673,0.5,1,0.5,1,nan,0.1,0.5,1,0.5,1,0.001,nan,0.0009699321047526673,nan
+4,0.0009699321047526673,0.5,1,0.5,1,nan,0.1,0.5,1,0.5,1,0.00104,nan,0.0009699321047526673,nan
+5,0.0009699321047526673,0.5,1,0.5,1,nan,0.1,0.5,1,0.5,1,0.00104,nan,0.0009699321047526673,nan
