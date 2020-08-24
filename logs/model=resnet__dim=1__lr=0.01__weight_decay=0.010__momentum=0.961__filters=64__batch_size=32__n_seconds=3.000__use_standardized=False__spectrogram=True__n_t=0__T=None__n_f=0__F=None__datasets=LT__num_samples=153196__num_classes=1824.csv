@@ -1,0 +1,2 @@
+epoch,LibriSpeech_val_auc,LibriSpeech_val_eer,TCOF_val_auc,TCOF_val_eer,accuracy,loss,lr,train_accuracy,train_loss,val_accuracy,val_loss
+1,0.8293397903720133,0.24013185002060158,0.7251954712488409,0.42857142857142855,0.0,19.757300758605304,0.01,0.0,193153.97199252195,0.0,193195.72814964573
