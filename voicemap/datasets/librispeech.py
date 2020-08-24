@@ -4,7 +4,7 @@ from typing import Union, List
 import numpy as np
 import pandas as pd
 import soundfile as sf
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 
 from config import DATA_PATH, PATH
 from .core import sex_to_label, AudioDataset
@@ -74,6 +74,7 @@ class LibriSpeech(AudioDataset):
                     subset_index_path = PATH + '/data/{}.index.csv'.format(s)
                     if os.path.exists(subset_index_path):
                         cached_df.append(pd.read_csv(subset_index_path))
+                        print(f"LibriSpeech {s} loaded from '{DATA_PATH}/{s}.index.csv'")
                         found_cache[s] = True
 
             # Index the remaining subsets if any
@@ -128,6 +129,7 @@ class LibriSpeech(AudioDataset):
         self.unique_speakers = sorted(self.df['speaker_id'].unique())
         self.speaker_id_mapping = {self.unique_speakers[i]: i for i in range(self.num_classes)}
 
+        print("In LibriSpeech", self.subsets, "there are ", self.num_classes," speakers")
 
     def __getitem__(self, index):
         instance, samplerate = sf.read(self.datasetid_to_filepath[index])
@@ -177,7 +179,6 @@ class LibriSpeech(AudioDataset):
 
     @property
     def num_classes(self):
-        print("In LibriSpeech there are "+str(len(self.df['speaker_id'].unique()))+" speakers")
         return len(self.df['speaker_id'].unique())
 
     def index_subset(self, subset):

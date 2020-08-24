@@ -7,7 +7,7 @@ from sklearn.metrics import roc_auc_score, roc_curve
 import numpy as np
 import pandas as pd
 from olympic.callbacks import Callback
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 
 from voicemap.datasets import PairDataset
 from voicemap.datasets.core import collate_pairs
@@ -69,11 +69,16 @@ def unseen_speakers_evaluation(model: nn.Module, dataset: Dataset, num_pairs: in
     pbar.close()
     try:
         roc_auc = roc_auc_score(labels, distances)
+        fpr, tpr, _ = roc_curve(labels, distances)
+        eer = equal_error_rate(fpr, tpr)
     except ValueError as error:
-        print(error)
+        print("ValueError:", error)
         roc_auc = 0.5
-    fpr, tpr, _ = roc_curve(labels, distances)
-    eer = equal_error_rate(fpr, tpr)
+        eer = 1
+    except IndexError as error:
+        print("IndexError:", error)
+        roc_auc = 0.5
+        eer = 1
     return {
         'auc': roc_auc,
         'eer': eer,

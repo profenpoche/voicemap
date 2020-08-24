@@ -6,3 +6,4 @@ from .sitw import SpeakersInTheWild
 from .spectrogram import SpectrogramDataset
 from .tcof import TCOF
 from .prediction import PredictionAudioDataset
+from .datasets import *

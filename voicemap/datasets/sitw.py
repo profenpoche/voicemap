@@ -50,7 +50,7 @@ class SpeakersInTheWild(AudioDataset):
             # Get dataset info
             self.df = pd.read_csv(self.data_path + f'/sitw/{self.split}/lists/{subset}.lst',
                                 delimiter=' ', names=['id', 'filepath'])
-
+            print(f"sitw loaded from '{DATA_PATH}/sitw/{self.split}/lists/{subset}.lst'")
             # Have to use /keys/meta.list to get speaker_id
             meta_names = ['filepath', 'speaker_id', 'gender', 'mic_type', 'session_id', 'audio_start', 'audio_end',
                         'num_speakers', 'artifact_labels', 'artifact_level', 'environment', 'tag1', 'tag2', 'tag3',
@@ -73,12 +73,13 @@ class SpeakersInTheWild(AudioDataset):
         self.unique_speakers = sorted(self.df['speaker_id'].unique())
         self.speaker_id_mapping = {self.unique_speakers[i]: i for i in range(self.num_classes)}
 
+        print("In SitW", self.split,"there are ", self.num_classes, " speakers")
+
     def __len__(self):
         return len(self.df)
 
     @property
     def num_classes(self):
-        print("In SitW there are "+str(len(self.df['speaker_id'].unique()))+" speakers")
         return len(self.df['speaker_id'].unique())
 
     def __getitem__(self, index):

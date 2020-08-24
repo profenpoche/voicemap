@@ -52,11 +52,12 @@ class CommonVoice(AudioDataset):
             print(f"CommonVoice loaded from '{DATA_PATH}/CommonVoice/CommonVoice_{subset}_standardized.csv'")
         else:
             # if the {subset}_transformed.tsv is present we can load the data from it
-            if (os.path.isfile(self.data_path + f'/CommonVoice/{self.language}/{self.subset}_transformed.tsv')):
-                self.df = pd.read_csv(self.data_path + f'/CommonVoice/{self.language}/{self.subset}_transformed.tsv')
+            if (os.path.isfile(self.data_path + f'/CommonVoice/{self.language}/{self.subset}_transformed.csv')):
+                self.df = pd.read_csv(self.data_path + f'/CommonVoice/{self.language}/{self.subset}_transformed.csv')
+                print(f"CommonVoice {self.subset} loaded from '{DATA_PATH}/CommonVoice/{self.language}/{self.subset}_transformed.csv'")
             else:
                 self.df = pd.read_csv(self.data_path + f'/CommonVoice/{self.language}/{self.subset}.tsv', sep="\t")
-                
+                print(f"CommonVoice {self.subset} loaded from '{DATA_PATH}/CommonVoice/{self.language}/{self.subset}.tsv'")
                 self.df['speaker_id'] = self.df['client_id']
                 self.df['filepath'] = self.data_path + f'/CommonVoice/{self.language}/clips/' + self.df['path'] # + '.mp3'
 
@@ -78,12 +79,13 @@ class CommonVoice(AudioDataset):
         self.unique_speakers = sorted(self.df['speaker_id'].unique())
         self.speaker_id_mapping = {self.unique_speakers[i]: i for i in range(self.num_classes)}
 
+        print("In CommonVoice ", self.subset, " there are ", self.num_classes," speakers")
+
     def __len__(self):
         return len(self.df)
 
     @property
     def num_classes(self):
-        print("In CommonVoice "+ self.subset +" there are "+str(len(self.df['speaker_id'].unique()))+" speakers")
         return len(self.df['speaker_id'].unique())
 
     def __getitem__(self, index):
