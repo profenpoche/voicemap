@@ -17,7 +17,7 @@ from voicemap.datasets.datasets import letter_to_dataset_dict, gather_datasets
 from voicemap.callbacks import OptunaPruningCallback
 from config import PATH, DATA_PATH
 
-class training_args:
+class TrainingArgs:
 
     def __init__(self, 
                 model="resnet", 
@@ -63,7 +63,7 @@ class training_args:
         self.n_f: int = n_f
         self.F = F
 
-def calculate_in_channels(args:training_args):
+def calculate_in_channels(args:TrainingArgs):
     """ Calculate in_channels based on dim, spectrogram and window_length
     """
     if args.spectrogram:
@@ -78,13 +78,14 @@ def calculate_in_channels(args:training_args):
     return in_channels
 
 
-def get_param_str(args:training_args, num_samples=None, num_classes=None):
+def get_param_str(args:TrainingArgs, num_samples=None, num_classes=None):
     """ Generate the parameters string (ex: "model=resnet__dim=1...")
     Add num_samples and/or num_classes if they are given
     """
     excluded_args = ['epochs', 'precompute_spect', 'downsampling', 'window_length','window_hop', 'model_path', 'val_datasets_letters', 'device']
     param_dict = {k: v for k, v in vars(args).items() if not k in excluded_args}
-    param_dict['n_seconds'] = f"{param_dict['n_seconds']:.2f}"
+    for param in ['n_seconds', 'weight_decay', 'momentum']:
+        param_dict[param] = f"{param_dict[param]:.3f}"
     param_dict['datasets'] = param_dict.pop('train_datasets_letters')
     if num_samples is not None:
         param_dict.update({'num_samples': num_samples})
@@ -136,7 +137,7 @@ def batch_metrics(model, y_pred, y, metrics, batch_logs):
 
     return batch_logs
 
-def load_model(args:training_args, in_channels, num_classes, device='cuda', model_path=None, verbose=True):
+def load_model(args:TrainingArgs, in_channels, num_classes, device='cuda', model_path=None, verbose=True):
     """ Load weights and return the model loaded
     """
     if model_path is not None:
@@ -151,7 +152,7 @@ def load_model(args:training_args, in_channels, num_classes, device='cuda', mode
         print(f"Model loaded : '{args.model_path}'")
     return model
 
-def get_model(args:training_args, in_channels, num_classes, device='cuda', model_path=None, verbose=True):
+def get_model(args:TrainingArgs, in_channels, num_classes, device='cuda', model_path=None, verbose=True):
     """ Create or load a model
     """
     if args.model_path:
@@ -166,7 +167,19 @@ def get_model(args:training_args, in_channels, num_classes, device='cuda', model
         model.to(device, dtype=torch.double)
     return model
 
-def train(args:training_args, train_datasets_letters, val_datasets_letters, monitor='val_loss', test_size=0.1, metrics=['accuracy'], optunaTrial=None, verbose=True):
+def train(args:TrainingArgs, train_datasets_letters, val_datasets_letters, monitor='val_loss', test_size=0.1, metrics=['accuracy'], optunaTrial=None, verbose=True):
+    """Train a model with dynamic datasets and parameters.
+    If Optuna.Trial instance is given, it can prune unpromising trials.
+
+    Args:
+        args: TrainingArgs, specifies the model type, batch_size, filters, etc.
+        train_datasets_letters: letters of datasets to train with. Letters are listed into voicemap/datasets/datasets.py
+        val_datasets_letters: letters of datasets to evaluate
+        monitor: column to evaluate the score of the model
+        test_size: Percentage for the test/train split over the whole data
+        metrics: Metrics to evaluate
+        optunaTrial: Optuna.Trial instance to allow pruning if the trial is not useful
+    """
     # Calculation of some necessary parameters
     in_channels = calculate_in_channels(args)
     device = torch.device('cuda')
@@ -219,9 +232,9 @@ def train(args:training_args, train_datasets_letters, val_datasets_letters, moni
                 prefix=letter_to_dataset_dict[letter]+'_val_')
         )
     callbacks.extend([
-        ReduceLROnPlateau(monitor=monitor, patience=5, verbose=True, min_delta=0.25),
+        ReduceLROnPlateau(monitor=monitor, patience=5, verbose=verbose, min_delta=0.25),
         ModelCheckpoint(filepath=PATH + f'/models/{param_str}.pt',
-                        monitor=monitor, save_best_only=True, verbose=True),
+                        monitor=monitor, save_best_only=True, verbose=verbose),
         CSVLogger(PATH + f'/logs/{param_str}.csv', append=True),
     ])
     if optunaTrial is not None:

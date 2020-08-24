@@ -60,6 +60,7 @@ class TCOF(AudioDataset):
             for subset in subsets:
                 # Get dataset info
                 cached_df = pd.read_csv(self.data_path + f'/TCOF/TCOF_{subset}.csv')
+                print(f"TCOF loaded from '{DATA_PATH}/TCOF/TCOF_{subset}.csv'")
                 self.df = pd.concat([cached_df,self.df])
 
             if not 'seconds' in self.df.columns:
@@ -84,12 +85,13 @@ class TCOF(AudioDataset):
         self.unique_speakers = sorted(self.df['speaker_id'].unique())
         self.speaker_id_mapping = {self.unique_speakers[i]: i for i in range(self.num_classes)}
 
+        print("In TCOF ", self.subsets, " there are ", self.num_classes," speakers")
+
     def __len__(self):
         return len(self.df)
 
     @property
     def num_classes(self):
-        print("In TCOF ", self.subsets, " there are "+str(len(self.df['speaker_id'].unique()))+" speakers")
         return len(self.df['speaker_id'].unique())
 
     def readAudioFile(self, filename):
