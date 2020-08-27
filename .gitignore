@@ -110,6 +110,7 @@ data/*.csv
 .idea/*
 models/*
 logs/*.log
+logs/model*
 plots/*
 bin/*
 data/CommonVoice/*
