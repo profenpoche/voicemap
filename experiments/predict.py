@@ -45,6 +45,9 @@ class bcolors:
 #############
 
 def generateDataloaders(args):
+    test_size = 0.0005
+    test_size_unseen = 0.01
+
     librispeech_subsets = ['train-clean-100', 'train-clean-360', 'train-other-500']
     unseen_subset = 'dev-clean'
 
@@ -102,7 +105,7 @@ def generateDataloaders(args):
             dataloader,
             dataloader_unseen
         ],
-        "num_classes": num_classes,
+        "num_classes": args.num_speakers,
         "datasets_sampling_rate": dataset_sampling_rate
     }
 
@@ -265,24 +268,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
 
-    #############
-    # Constants #
-    #############
-    # Device must be 'cpu' if no gpu found
-    device = torch.device(args.device)
-    if args.spectrogram:
-        if args.dim == 1:
-            in_channels = int(args.window_length * 16000) // 2 + 1
-        elif args.dim == 2:
-            in_channels = 1
-        else:
-            raise RuntimeError
-    else:
-        in_channels = 1
-    test_size = 0.0005
-    test_size_unseen = 0.01
-    num_classes = args.num_speakers
-
+    in_channels = calculate_in_channels(args)
     N_SPEAKERS_EVALUATION = 7
     
     ##############
@@ -312,7 +298,7 @@ if __name__ == "__main__":
         n_members = int(input("Please enter the number of speakers in the activity : "))
 
     # Load the model
-    model = load_model(args.model_path, args.filters, in_channels, num_classes, args.dim, args.device)
+    model = load_model(args.model_path, args.filters, in_channels, args.num_speakers, args.dim, args.device)
     # Initialize the list of identified and trusted speakers
     speakers = [] 
 
