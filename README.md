@@ -59,3 +59,15 @@ This package contains experiments in the form of python scripts.
 ### notebooks
 This folder contains Jupyter notebooks used for interactive
 visualisation and analysis.
+
+## Usage
+### Prediction
+You can use a saved model (in the folder models/) to predict the speakers of audios.
+Two models are available : best_model.pt and best_model_without_spec.pt. The data used for the example for the prediction must be downloaded. You can launch prediction through the console with bin/predict.sh (you have to precise some parameters of the model) or (recommended) through the Jupyter notebook "Prediction".
+### Speakers standardization
+For training, you can toggle the 'use_standardized' parameter to keep only a given amount of samples per speaker.
+An example of the standardization is given in the "Optimization" notebook. You can also see the notebook "Standardize_speakers" to execute the function to standardize speakers.
+### Log the best models
+Best models parameters are logged manually into the logs/models.csv. Thanks to the "Model_stats" notebook you can save models and log them into this log file.
+### Parameters optimization
+Thanks to the "Optimization" notebook, you can do hyperparameters optimization with Optuna. The logs are sent to Neptune. You will have to create an account and paste the Neptune API key into the notebook to use it.

@@ -26,5 +26,5 @@ python3.7 ${path}experiments/predict.py \
 	--filters 128 \
 	--num-speakers 1291 \
 	--spectrogram False \
-	
+	--device cuda \
 	

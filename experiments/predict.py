@@ -1,3 +1,5 @@
+""" TODO : This file is obsolete. Have to put it in the voicemap folder as a library.
+"""
 import torch
 import torch.nn.functional as F
 import numpy as np
@@ -16,6 +18,7 @@ from voicemap.utils import whiten, setup_dirs
 from voicemap.eval import VerificationMetrics
 from voicemap.augment import SpecAugment
 from config import PATH, DATA_PATH
+from voicemap.train import TrainingArgs, calculate_in_channels
 
 from olympic.metrics import NAMED_METRICS
 from voicemap.eval import unseen_speakers_evaluation
@@ -26,19 +29,6 @@ import os
 import sys
 import time
 start_time = time.time()
-
-class args:
-    model_path = "../saved_models/peach_0001.pt"
-    dim = 1
-    filters = 128
-    num_speakers = 3699
-    batch_size = 1500
-    n_seconds = 3
-    downsampling = 4
-    spectrogram = True
-    window_length = 0.02
-    window_hop = 0.01
-    device = 'cpu'
 
 class bcolors:
     HEADER = '\033[95m'
@@ -54,7 +44,7 @@ class bcolors:
 # Datasets  #
 #############
 
-def generateDataloaders(args=args):
+def generateDataloaders(args):
     librispeech_subsets = ['train-clean-100', 'train-clean-360', 'train-other-500']
     unseen_subset = 'dev-clean'
 
@@ -160,7 +150,7 @@ def predictSubset(dataloader, model):
 ###############################
 # getitem from the dataset (ie audio array) and predict the speaker with the model
 # Print the N_SPEAKERS_EVALUATION speakers it is most confident of
-def predictAudioFile(predictionDataloader, model, n_first_spk=7, spectrogram=True):
+def predictAudioFile(predictionDataloader, model, n_first_spk=7, spectrogram=True, device='cuda'):
 
     if spectrogram:
         def prepare_batch(batch):
@@ -173,7 +163,7 @@ def predictAudioFile(predictionDataloader, model, n_first_spk=7, spectrogram=Tru
             # Normalise inputs
             # Move to GPU if possible and convert targets to int
             x, y = batch
-            if (args.device == 'cpu'):
+            if (device == 'cpu'):
                 return whiten(x), y.long()
             else:
                 return whiten(x).cuda(), y.long().cuda()
@@ -224,24 +214,13 @@ def chooseSpeakerToKeep(speakers_recognized, speakers_trusted, confidences):
         return most_confident_speaker
 
 # Return the speaker to associate with the audio
-def identifySpeaker(speakers, predictionDataloader, model, n_first_spk=7, spectrogram=True):
+def identifySpeaker(speakers, predictionDataloader, model, n_first_spk=7, spectrogram=True, device='cuda'):
     speaker_identified = -1
     while speaker_identified == -1:
         start_time = time.time()
         # try:
-        values, speakers_recognized = predictAudioFile(predictionDataloader, model, n_first_spk, spectrogram)
+        values, speakers_recognized = predictAudioFile(predictionDataloader, model, n_first_spk, spectrogram, device)
         speaker_identified = chooseSpeakerToKeep(speakers_recognized, speakers, values)
-        # except NameError as error:
-        #     print(error)
-        #     audio_path = str(input("NameError: Please enter another audio path for the same speaker : "))
-        #     predictionDataloader = buildPredictionDataloader(audio_path)
-        #     speaker_identified = identifySpeaker(speakers, predictionDataloader, model)
-        # except RuntimeError as error:
-        #     print(error)
-        #     print("The voice is too similar to precedent voices. Please retry to speak...")
-        #     audio_path = str(input("RuntimeError: Please enter another audio path for the same speaker : "))
-        #     predictionDataloader = buildPredictionDataloader(audio_path)
-        #     speaker_identified = identifySpeaker(speakers, predictionDataloader, model)
         print("--- %s seconds ---" % (time.time() - start_time))
     return speaker_identified
 
@@ -252,7 +231,7 @@ def addFileToPredictionDataset(filepath, predictionDataset):
     predictionDataset.append(filepath)
     return len(predictionDataset) - 1
 
-def buildPredictionDataloader(filename=None, args=args):
+def buildPredictionDataloader(filename, args):
     predictionDataset = PredictionAudioDataset(filename, args.n_seconds, args.downsampling)
     if args.spectrogram:
         predictionDataset = SpectrogramDataset(predictionDataset, 'global', args.window_length, args.window_hop)
@@ -320,14 +299,14 @@ if __name__ == "__main__":
     auto_prepare = int(input("Do you want to auto prepare "+str(n_members)+" speakers ? (0/1) : "))
     if (auto_prepare):
         audio_paths = [
-            "data/testPrediction/activity_SId/1-10.flac", 
-            "data/testPrediction/activity_SId/2-18.flac", 
-            "data/testPrediction/activity_SId/3-18.flac", 
-            "data/testPrediction/activity_SId/6-4.flac",
-            "data/testPrediction/activity_SId/7-2.flac",
-            "data/testPrediction/activity_SId/8-4.flac"
-            # "data/testPrediction/activity_SId/4-1.flac", 
-            # "data/testPrediction/activity_SId/5-1.flac"
+            DATA_PATH + "/testPrediction/activity_SId/1-10.flac", 
+            DATA_PATH + "/testPrediction/activity_SId/2-18.flac", 
+            DATA_PATH + "/testPrediction/activity_SId/3-18.flac", 
+            DATA_PATH + "/testPrediction/activity_SId/6-4.flac",
+            DATA_PATH + "/testPrediction/activity_SId/7-2.flac",
+            DATA_PATH + "/testPrediction/activity_SId/8-4.flac"
+            # DATA_PATH + "/testPrediction/activity_SId/4-1.flac", 
+            # DATA_PATH + "/testPrediction/activity_SId/5-1.flac"
             ]
     else:
         n_members = int(input("Please enter the number of speakers in the activity : "))
@@ -345,10 +324,10 @@ if __name__ == "__main__":
             audio_path = str(input("Please enter the audio path for the voice of the speaker n°"+str(m)+" : "))
         
         # It is necessary to put the audio in a dataloader before prediction
-        predictionDataloader = buildPredictionDataloader(audio_path, args=args)
+        predictionDataloader = buildPredictionDataloader(audio_path, args)
         
         # predict the speaker (and validate him compared to the previous speakers)
-        speaker_identified = identifySpeaker(speakers, predictionDataloader, model, N_SPEAKERS_EVALUATION, args.spectrogram)
+        speaker_identified = identifySpeaker(speakers, predictionDataloader, model, N_SPEAKERS_EVALUATION, args.spectrogram, args.device)
         speakers.append(speaker_identified)
         
     print(bcolors.OKBLUE + "\nSpeakers are : ")
@@ -365,8 +344,8 @@ if __name__ == "__main__":
     while activity_can_continue:
         try:
             audio_path = str(input("Please enter the audio path for the speaker to identify : "))
-            predictionDataloader = buildPredictionDataloader(audio_path)
-            values, indices = predictAudioFile(predictionDataloader, model, args.spectrogram)
+            predictionDataloader = buildPredictionDataloader(audio_path, args)
+            values, indices = predictAudioFile(predictionDataloader, model, args.spectrogram, args.device)
             print("Confidence for each speaker previously identified : ")
             filtered_list = [values[i] for i in speakers]
             print(filtered_list)
