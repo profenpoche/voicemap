@@ -21,8 +21,7 @@ echo -e "\nInfo: Change the model and the audio file used in bin/predict.sh\n"
 # --device cuda 
 
 python3.7 ${path}experiments/predict.py \
-	--model-path "saved_models/gaixoa.pt" \
-	--audio-path "data/testPrediction/pob.flac" \
+	--model-path "models/best_model_without_spec.pt" \
 	--filters 128 \
 	--num-speakers 1291 \
 	--spectrogram False \
