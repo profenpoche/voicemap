@@ -7,9 +7,7 @@ The eventual aim is for this repository to become a pip-installable
 python package for quickly and easily performing speaker identification
 related tasks.
 
-**This tensorflow/Keras/python2.7 branch is discontinued. Work is
-continuing on the pytorch-python-3.6 branch which will become the
-master branch.**
+**French only : Pour les francophones, un document plus détaillé sur le fonctionnement de voicemap est accessible ici : https://drive.google.com/file/d/1tt1qUUiNg3PivoT4hgLydDRQoDjSdC3m/view?usp=sharing**
 
 ## Instructions
 ### Requirements
@@ -18,14 +16,36 @@ with the following command.
 ```
 pip install -r requirements.txt
 ```
-This project was written in Python 2.7.12 so I cannot guarantee it works
-on any other version.
+
+### Pretrained models
+
+You can download pretrained models. Put them into the models/ folder so you don't have to change the path for the preset prediction.
+```
+cd models
+wget https://mathia.education/voicemap/best_model.pt
+wget https://mathia.education/voicemap/best_model_without_spec.pt
+```
 
 ### Data
+Four different datasets are ready to be used :
+- LibriSpeech
+- Speakers in the Wild
+- Common Voice
+- TCOF
+
+For each dataset you have to download it and place it in the data/ folder.
+You must have a training set and a validation set, the filepaths must be listed in a .csv file.
+The manner to read respectively each dataset is described into the voicemap/datasets/\<dataset\>.py file.
+
+Info : The usage put in parenthesis for the subsets are indicative. You can change the usage if you want.
+
+**Change the path of the data folder in the config.py file**
+
+#### LibriSpeech
 Get training data here: http://www.openslr.org/12
-- train-clean-100.tar.gz
-- train-clean-360.tar.gz
-- dev-clean.tar.gz
+- train-clean-100.tar.gz (used for training)
+- train-clean-360.tar.gz (used for training)
+- dev-clean.tar.gz (used for validation)
 
 Place the unzipped training data into the `data/` folder so the file
 structure is as follows:
@@ -38,26 +58,59 @@ data/
         SPEAKERS.TXT
 ```
 
-Please use the `SPEAKERS.TXT` supplied in the repo as I've made a few
-corrections to the one found at openslr.org.
+Please use the `SPEAKERS.TXT` supplied in the repo as the one found at openslr.org has been modified.
 
-**Change the path of the data folder in the config.py file**
+#### SitW
+Get training data here: http://www.speech.sri.com/projects/sitw/
+- sitw_database.v4.tar.gz
 
-### Pretrained models
-
-You can download pretrained models. Put them into the models/ folder so you don't have to change the path for the preset prediction.
+Place the unzipped training data into the `data/` folder so the file
+structure is as follows:
 ```
-cd models
-wget https://mathia.education/voicemap/best_model.pt
-wget https://mathia.education/voicemap/best_model_without_spec.pt
+data/
+    sitw/
+        dev/ (used for training)
+        eval/ (used for validation)
 ```
 
-### Run tests
+#### Common Voice
+Get training data here: https://commonvoice.mozilla.org/en/datasets
 
-This requires the LibriSpeech data.
+For instance, for the corpus containing french audios :
+- fr.tar.gz
+
+Place the unzipped training data into the `data/` folder so the file
+structure is as follows:
 ```
-python -m unittest tests.tests
+data/
+    CommonVoice/
+        fr/
+            validated.tsv (unused)
+            train.tsv (training set)
+            test.tsv (validation set)
+            dev.tsv
+            other.tsv
 ```
+
+#### TCOF, French dataset
+Get training data here: https://www.ortolang.fr/market/corpora/tcof?path=%2FCorpus
+For instance, for the corpus containing french kids :
+- Enfants.zip 
+
+Place the unzipped training data into the `data/` folder so the file
+structure is as follows:
+```
+data/
+    TCOF/
+        TCOF_train.csv (train)
+        TCOF_test.csv
+        TCOF_dev.csv (val)
+        Enfants/
+```
+
+**The .csv file is not downloadable over the website, you will have to generate it.**
+
+You can use the notebook "Imports and transforms datasets" notebook and the "importTCOF.py" script to generate the .csv file listing the filepaths. The script will separate the different speakers over the audios thanks to the timecodes written in the .xml transcript files.
 
 ## Contents
 ### voicemap
@@ -76,7 +129,7 @@ visualisation and analysis.
 
 ### Prediction
 
-You can use a saved model (in the folder models/) to predict the speakers of audios.
+You can use a saved model (in the models/ folder) to predict the speakers of audios.
 Two models are available : best_model.pt and best_model_without_spec.pt. The data used for the example for the prediction must be downloaded. You can launch prediction through the console with bin/predict.sh (you have to precise some parameters of the model) or (recommended) through the Jupyter notebook "Prediction".
 
 Just run the command below to run prediction with a given model and given audio files
